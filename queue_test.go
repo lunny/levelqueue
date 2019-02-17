@@ -12,8 +12,10 @@ import (
 )
 
 func TestQueue(t *testing.T) {
-	os.RemoveAll("./queue")
-	queue, err := New("./queue")
+	const dbDir = "./queue"
+
+	os.RemoveAll(dbDir)
+	queue, err := Open(dbDir)
 	assert.NoError(t, err)
 
 	err = queue.RPush([]byte("test"))
@@ -51,4 +53,18 @@ func TestQueue(t *testing.T) {
 	assert.Error(t, err)
 	assert.EqualValues(t, []byte(nil), data)
 	assert.EqualValues(t, ErrNotFound, err)
+
+	err = queue.Close()
+	assert.NoError(t, err)
+
+	queue, err = Open(dbDir)
+	assert.NoError(t, err)
+
+	err = queue.RPush([]byte("test3"))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, queue.Len())
+
+	data, err = queue.RPop()
+	assert.NoError(t, err)
+	assert.EqualValues(t, "test3", string(data))
 }

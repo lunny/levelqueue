@@ -7,5 +7,6 @@ package levelqueue
 import "errors"
 
 var (
+	// ErrNotFound means no element in queue
 	ErrNotFound = errors.New("no key found")
 )

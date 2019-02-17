@@ -21,16 +21,8 @@ type Queue struct {
 	high     int64
 }
 
-func (queue *Queue) readID(key []byte) (int64, error) {
-	bs, err := queue.db.Get(key, nil)
-	if err != nil {
-		return 0, err
-	}
-	return bytes2id(bs)
-}
-
-// New creates a new queue object
-func New(dataDir string) (*Queue, error) {
+// Open opens a queue object or create it if not exist
+func Open(dataDir string) (*Queue, error) {
 	db, err := leveldb.OpenFile(dataDir, nil)
 	if err != nil {
 		return nil, err
@@ -57,6 +49,14 @@ func New(dataDir string) (*Queue, error) {
 	}
 
 	return queue, nil
+}
+
+func (queue *Queue) readID(key []byte) (int64, error) {
+	bs, err := queue.db.Get(key, nil)
+	if err != nil {
+		return 0, err
+	}
+	return bytes2id(bs)
 }
 
 var (
@@ -116,6 +116,7 @@ func (queue *Queue) lowdecrement() (int64, error) {
 	return queue.low, nil
 }
 
+// Len returns the length of the queue
 func (queue *Queue) Len() int64 {
 	queue.lowLock.Lock()
 	queue.highLock.Lock()
@@ -135,6 +136,7 @@ func bytes2id(b []byte) (int64, error) {
 	return binary.ReadVarint(bytes.NewReader(b))
 }
 
+// RPush pushes a data from right of queue
 func (queue *Queue) RPush(data []byte) error {
 	id, err := queue.highincrement()
 	if err != nil {
@@ -143,6 +145,7 @@ func (queue *Queue) RPush(data []byte) error {
 	return queue.db.Put(id2bytes(id), data, nil)
 }
 
+// LPush pushes a data from left of queue
 func (queue *Queue) LPush(data []byte) error {
 	id, err := queue.lowdecrement()
 	if err != nil {
@@ -151,6 +154,7 @@ func (queue *Queue) LPush(data []byte) error {
 	return queue.db.Put(id2bytes(id), data, nil)
 }
 
+// RPop pop a data from right of queue
 func (queue *Queue) RPop() ([]byte, error) {
 	currentID := queue.high
 	res, err := queue.db.Get(id2bytes(currentID), nil)
@@ -173,6 +177,7 @@ func (queue *Queue) RPop() ([]byte, error) {
 	return res, nil
 }
 
+// LPop pop a data from left of queue
 func (queue *Queue) LPop() ([]byte, error) {
 	currentID := queue.low
 	res, err := queue.db.Get(id2bytes(currentID), nil)
@@ -193,4 +198,11 @@ func (queue *Queue) LPop() ([]byte, error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+// Close closes the queue
+func (queue *Queue) Close() error {
+	err := queue.db.Close()
+	queue.db = nil
+	return err
 }
