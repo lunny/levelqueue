@@ -116,40 +116,13 @@ func (queue *Queue) lowdecrement() (int64, error) {
 	return queue.low, nil
 }
 
-func (queue *Queue) Len() (int64, error) {
+func (queue *Queue) Len() int64 {
 	queue.lowLock.Lock()
 	queue.highLock.Lock()
-	lowbs, err := queue.db.Get(lowKey, nil)
-	if err != nil {
-		queue.highLock.Unlock()
-		queue.lowLock.Unlock()
-		return 0, err
-	}
-
-	low, err := bytes2id(lowbs)
-	if err != nil {
-		queue.highLock.Unlock()
-		queue.lowLock.Unlock()
-		return 0, err
-	}
-
-	highbs, err := queue.db.Get(highKey, nil)
-	if err != nil {
-		queue.highLock.Unlock()
-		queue.lowLock.Unlock()
-		return 0, err
-	}
-
-	high, err := bytes2id(highbs)
-	if err != nil {
-		queue.highLock.Unlock()
-		queue.lowLock.Unlock()
-		return 0, err
-	}
-
+	l := queue.high - queue.low + 1
 	queue.highLock.Unlock()
 	queue.lowLock.Unlock()
-	return high - low + 1, nil
+	return l
 }
 
 func id2bytes(id int64) []byte {

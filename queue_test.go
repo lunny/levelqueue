@@ -19,9 +19,7 @@ func TestQueue(t *testing.T) {
 	err = queue.RPush([]byte("test"))
 	assert.NoError(t, err)
 
-	l, err := queue.Len()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, l)
+	assert.EqualValues(t, 1, queue.Len())
 
 	data, err := queue.LPop()
 	assert.NoError(t, err)
@@ -33,9 +31,7 @@ func TestQueue(t *testing.T) {
 	assert.EqualValues(t, []byte(nil), data)
 	assert.EqualValues(t, ErrNotFound, err)
 
-	l, err = queue.Len()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 0, l)
+	assert.EqualValues(t, 0, queue.Len())
 
 	err = queue.LPush([]byte("test2"))
 	assert.NoError(t, err)
@@ -44,9 +40,7 @@ func TestQueue(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, "test2", string(data))
 
-	l, err = queue.Len()
-	assert.NoError(t, err)
-	assert.EqualValues(t, 0, l)
+	assert.EqualValues(t, 0, queue.Len())
 
 	data, err = queue.LPop()
 	assert.Error(t, err)
