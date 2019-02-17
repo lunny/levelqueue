@@ -65,54 +65,43 @@ var (
 )
 
 func (queue *Queue) highincrement() (int64, error) {
-	queue.highLock.Lock()
-	queue.high = queue.high + 1
+	id := queue.high + 1
+	queue.high = id
 	err := queue.db.Put(highKey, id2bytes(queue.high), nil)
 	if err != nil {
 		queue.high = queue.high - 1
-		queue.highLock.Unlock()
 		return 0, err
 	}
-	queue.highLock.Unlock()
-	return queue.high, nil
+	return id, nil
 }
 
 func (queue *Queue) highdecrement() (int64, error) {
-	queue.highLock.Lock()
 	queue.high = queue.high - 1
 	err := queue.db.Put(highKey, id2bytes(queue.high), nil)
 	if err != nil {
 		queue.high = queue.high + 1
-		queue.highLock.Unlock()
 		return 0, err
 	}
-	queue.highLock.Unlock()
 	return queue.high, nil
 }
 
 func (queue *Queue) lowincrement() (int64, error) {
-	queue.lowLock.Lock()
 	queue.low = queue.low + 1
 	err := queue.db.Put(lowKey, id2bytes(queue.low), nil)
 	if err != nil {
 		queue.low = queue.low - 1
-		queue.lowLock.Unlock()
 		return 0, err
 	}
-	queue.lowLock.Unlock()
 	return queue.low, nil
 }
 
 func (queue *Queue) lowdecrement() (int64, error) {
-	queue.lowLock.Lock()
 	queue.low = queue.low - 1
 	err := queue.db.Put(lowKey, id2bytes(queue.low), nil)
 	if err != nil {
 		queue.low = queue.low + 1
-		queue.lowLock.Unlock()
 		return 0, err
 	}
-	queue.lowLock.Unlock()
 	return queue.low, nil
 }
 
@@ -138,27 +127,38 @@ func bytes2id(b []byte) (int64, error) {
 
 // RPush pushes a data from right of queue
 func (queue *Queue) RPush(data []byte) error {
+	queue.highLock.Lock()
 	id, err := queue.highincrement()
 	if err != nil {
+		queue.highLock.Unlock()
 		return err
 	}
-	return queue.db.Put(id2bytes(id), data, nil)
+	err = queue.db.Put(id2bytes(id), data, nil)
+	queue.highLock.Unlock()
+	return err
 }
 
 // LPush pushes a data from left of queue
 func (queue *Queue) LPush(data []byte) error {
+	queue.highLock.Lock()
 	id, err := queue.lowdecrement()
 	if err != nil {
+		queue.highLock.Unlock()
 		return err
 	}
-	return queue.db.Put(id2bytes(id), data, nil)
+	err = queue.db.Put(id2bytes(id), data, nil)
+	queue.highLock.Unlock()
+	return err
 }
 
 // RPop pop a data from right of queue
 func (queue *Queue) RPop() ([]byte, error) {
+	queue.highLock.Lock()
 	currentID := queue.high
+
 	res, err := queue.db.Get(id2bytes(currentID), nil)
 	if err != nil {
+		queue.highLock.Unlock()
 		if err == leveldb.ErrNotFound {
 			return nil, ErrNotFound
 		}
@@ -167,10 +167,12 @@ func (queue *Queue) RPop() ([]byte, error) {
 
 	_, err = queue.highdecrement()
 	if err != nil {
+		queue.highLock.Unlock()
 		return nil, err
 	}
 
 	err = queue.db.Delete(id2bytes(currentID), nil)
+	queue.highLock.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +181,12 @@ func (queue *Queue) RPop() ([]byte, error) {
 
 // LPop pop a data from left of queue
 func (queue *Queue) LPop() ([]byte, error) {
+	queue.lowLock.Lock()
 	currentID := queue.low
+
 	res, err := queue.db.Get(id2bytes(currentID), nil)
 	if err != nil {
+		queue.lowLock.Unlock()
 		if err == leveldb.ErrNotFound {
 			return nil, ErrNotFound
 		}
@@ -194,6 +199,7 @@ func (queue *Queue) LPop() ([]byte, error) {
 	}
 
 	err = queue.db.Delete(id2bytes(currentID), nil)
+	queue.lowLock.Unlock()
 	if err != nil {
 		return nil, err
 	}
