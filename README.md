@@ -15,7 +15,7 @@ go get github.com/lunny/levelqueue
 ## Usage
 
 ```Go
-queue, err := New("./queue")
+queue, err := levelqueue.Open("./queue")
 
 err = queue.RPush([]byte("test"))
 
